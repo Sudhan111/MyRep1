@@ -1,0 +1,737 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE sailpoint PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+
+<!-- (c) Copyright 2020 SailPoint Technologies, Inc., All Rights Reserved. -->
+
+<!--
+  This is used by 'iiq upgrade' to drive upgrading the schema and data between revisions.
+  There are two files that define the upgrade: upgrade.xml and upgradeObjects.xml.
+  upgrade.xml is processed in a special way before Hibernate is started so that changes can be made at the JDBC level.
+  These files should only contain <ImportAction> elements that use the "execute" command to call upgrader classes.
+  *DO NOT PUT STATIC XML OBJECTS IN UPGRADE.XML*
+  upgradeObjects.xml is included by upgrade.xml and will be imported after Hibernate is started. Any changes to objects
+  that can be represented as static XML or as ImportActions with the "merge" command must go in these files to ensure
+  that they are parsed after Hibernate has been started so that references can be resolved.
+-->
+<sailpoint>
+
+  <!--
+     This will reimport some updated objects
+     and should be safe to do for every release.
+   -->
+  <ImportAction name='include' value='WEB-INF/config/authorization.xml' />
+  <ImportAction name='include' value='WEB-INF/config/reportDefinitions.xml' />
+  <ImportAction name='include' value='WEB-INF/config/tasks.xml' />
+  <ImportAction name='include' value='WEB-INF/config/reportTasks.xml' />
+  <ImportAction name='include' value='WEB-INF/config/archiveReports.xml'/>
+  <ImportAction name='include' value='WEB-INF/config/rules.xml' />
+  <ImportAction name='include' value='WEB-INF/config/workflowRules.xml' />
+  <ImportAction name='include' value='WEB-INF/config/workflowSubs.xml' />
+  <ImportAction name='include' value='WEB-INF/config/workflowRegistry.xml' />
+  <ImportAction name='include' value='WEB-INF/config/workflow.xml' />
+  <ImportAction name='include' value='WEB-INF/config/form.xml' />
+  <ImportAction name='include' value='WEB-INF/config/reportForms.xml' />
+  <ImportAction name='include' value='WEB-INF/config/emailtemplates.xml' />
+  <ImportAction name='include' value='WEB-INF/config/defaultPasswordPolicies.xml' />
+  <ImportAction name='include' value='WEB-INF/config/connectorRegistry.xml' />
+  <ImportAction name='include' value='WEB-INF/config/connectorRegistryDeprecated.xml' />
+  <!-- Controlled Availability for Connectors -->
+  <ImportAction name='include' value='WEB-INF/config/connectorRegistryCAConnectors.xml' />
+  <ImportAction name='include' value='WEB-INF/config/reportRules.xml' />
+  <ImportAction name="include" value="WEB-INF/config/lcmForms.xml" />
+  <ImportAction name="include" value="WEB-INF/config/sendEmailPostActionRule.xml" />
+  <ImportAction name="include" value="WEB-INF/config/cefActivityTransformRule.xml" />
+  <ImportAction name="include" value="WEB-INF/config/cefActivityCorrelationRule.xml" />
+  <ImportAction name="include" value="WEB-INF/config/workflowConfigForms.xml" />
+  <!-- Scim configuration -->
+  <ImportAction name='include' value='WEB-INF/config/scimConfiguration.xml' />
+  <!-- Applications Builder Rule XML -->
+  <ImportAction name="include" value="WEB-INF/config/applicationBuilderRule.xml" />
+
+  <!-- New RequestDefinition object for the Role-Entitlement Associations Task -->
+  <RequestDefinition name="Role-Entitlement Associations Partition"
+                     executor="sailpoint.request.RoleEntitlementAssociationsRequestExecutor"
+                     retryMax="20">
+  </RequestDefinition>
+
+
+  <ImportAction name="merge">
+    <AuditConfig name="AuditConfig">
+      <AuditActions>
+        <AuditAction name="nativeIdentityChangeDetected" displayName="audit_action_nativeIdentityChangeDetected"/>
+      </AuditActions>
+      <AuditClasses>
+        <AuditClass name='NativeIdentityChangeEvent'/>
+      </AuditClasses>
+    </AuditConfig>
+  </ImportAction>
+
+  <ImportAction name="merge">
+    <Configuration name='SystemConfiguration'>
+      <Attributes>
+        <Map>
+          <entry key='nativeIdentityChangeMaxAge' value='0'/>
+          <entry key="nativeIdentityReplacerClass" value="sailpoint.api.nativeidentitychange.NativeIdentityStringReplacer"/>
+          <entry key="enableNativeIdentityChangeEventPropagation" value="true" />
+        </Map>
+      </Attributes>
+    </Configuration>
+  </ImportAction>
+
+  <!-- Task Definition for new Refresh Role-Entitlement Associations task -->
+  <TaskDefinition  name="Refresh Role-Entitlement Associations">
+    <Description>
+      Delete all existing role-entitlement associations and re-create them for all roles.
+    </Description>
+    <Parent>
+      <Reference class="sailpoint.object.TaskDefinition"  name="Role-Entitlement Associations"/>
+    </Parent>
+  </TaskDefinition>
+
+  <!-- Task Definition for Concurrent Refresh Identity task in NativeIdentityChange propagation -->
+  <TaskDefinition name="Refresh Identity Cube Concurrent" concurrent="true">
+      <Description>
+          Perform a full refresh of selected identities. This supports running concurrently.
+      </Description>
+      <Parent>
+          <Reference class="sailpoint.object.TaskDefinition" name="Refresh Identity Cube"/>
+      </Parent>
+  </TaskDefinition>
+
+
+  <!-- Add BundleProfileRelation to debug page -->
+  <ImportAction name='merge'>
+    <UIConfig name='UIConfig'>
+      <Attributes>
+        <Map>
+          <entry key="debugBundleProfileRelationGridColumns">
+            <value>
+              <List>
+                <ColumnConfig dataIndex="id" headerKey="Id" property="id" sortProperty="id" width="250" sortable="true" />
+                <ColumnConfig dataIndex="bundle_id" headerKey="Bundle Id" property="bundleId" sortProperty="bundleId" width="250" sortable="true" />
+                <ColumnConfig dataIndex="source_bundle_id" headerKey="Source Bundle Id" property="sourceBundleId" sortProperty="sourceBundleId" width="250" sortable="true" />
+                <ColumnConfig dataIndex="attribute" headerKey="Attribute" property="attribute" sortProperty="attribute" width="100" sortable="true" />
+                <ColumnConfig dataIndex="value" headerKey="Value" property="value" sortProperty="value" width="150" sortable="true" />
+                <ColumnConfig dataIndex="type" headerKey="Type" property="type" sortProperty="type" width="100" sortable="true" />
+                <ColumnConfig dataIndex="source_application_id" headerKey="Source Application Id" property="sourceApplication.id" sortProperty="sourceApplication.id" width="250" sortable="true" />
+                <ColumnConfig dataIndex="source_application_name" headerKey="Source Application Name" property="sourceApplication.name" sortProperty="sourceApplication.name" width="250" sortable="true" />
+                <ColumnConfig dataIndex="created" headerKey="Created" dateStyle="short" property="created" sortProperty="created" width="150" sortable="true" />
+                <ColumnConfig dataIndex="modified" headerKey="Modified" dateStyle="short" property="modified" sortProperty="modified" width="150" sortable="true" />
+              </List>
+            </value>
+          </entry>
+          <entry key="bundleProfileRelationAttributeTypeWithApp">
+            <value>
+              <List>
+                <ColumnConfig property="attribute" />
+                <ColumnConfig property="type" />
+                <ColumnConfig property="sourceApplication.name" />
+                <ColumnConfig property="sourceApplication.id" />
+              </List>
+            </value>
+          </entry>
+          <entry key="bundleProfileRelationValue">
+            <value>
+              <List>
+                <ColumnConfig property="attribute" />
+                <ColumnConfig property="value" />
+                <ColumnConfig property="displayValue" />
+                <ColumnConfig property="sourceApplication.name" />
+              </List>
+            </value>
+          </entry>
+          <entry key="debugPostCommitNotificationObjectGridColumns">
+            <value>
+              <List>
+                <ColumnConfig dataIndex="created" headerKey="Created" property="created" sortProperty="created" sortable="true" width="250" dateStyle="short"/>
+                <ColumnConfig dataIndex="consumer" headerKey="Consumer" property="consumer" sortProperty="consumer" sortable="true" width="250"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="debugBundleProfileRelationObjectGridColumns">
+            <value>
+              <List>
+                <ColumnConfig dataIndex="id" headerKey="Id" property="id" sortProperty="id" sortable="true" width="250"/>
+                <ColumnConfig dataIndex="modifiedId" headerKey="ModifiedId" property="modifiedId" sortProperty="modifiedId" sortable="true" width="250"/>
+                <ColumnConfig dataIndex="type" headerKey="Type" property="type" sortProperty="type" sortable="true" width="250"/>
+                <ColumnConfig dataIndex="modified" headerKey="Modified" property="modified" sortProperty="modified" sortable="true" width="250" dateStyle="short"/>
+                <ColumnConfig dataIndex="created" headerKey="Created" property="created" sortProperty="created" sortable="true" width="250" dateStyle="short"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="accountGroupRolesTableColumns">
+            <value>
+              <List>
+                <ColumnConfig dataIndex="displayName" groupProperty="displayName" headerKey="display_name" hideable="true" property="displayName" sortProperty="displayName" sortable="true" stateId="displayName"/>
+                <ColumnConfig dataIndex="description" groupProperty="description" headerKey="description" hideable="true" property="description" renderer="SailPoint.grid.Util.renderDescription" sortProperty="description" sortable="true" stateId="description"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="uiAccountGroupRolesTableColumns">
+            <value>
+              <List>
+                <ColumnConfig dataIndex="displayName" groupProperty="displayName" headerKey="display_name" hideable="true" property="displayName" sortProperty="displayName" sortable="true" stateId="displayName"/>
+                <ColumnConfig dataIndex="description" groupProperty="description" headerKey="description" hideable="true" property="description" renderer="spManagedAttributeRolesColumn" sortProperty="description" sortable="true" stateId="description"/>
+              </List>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </UIConfig>
+  </ImportAction>
+
+  <!-- Add BundleProfileRelationStep to debug page -->
+  <ImportAction name='merge'>
+    <UIConfig name='UIConfig'>
+      <Attributes>
+        <Map>
+          <entry key="debugBundleProfileRelationStepGridColumns">
+            <value>
+              <List>
+                <ColumnConfig dataIndex="id" headerKey="Id" property="id" sortProperty="id" width="250" sortable="true" />
+                <ColumnConfig dataIndex="bundle_profile_relation_id" headerKey="Bundle Profile Relation Id" property="bundleProfileRelationId" sortProperty="bundleProfileRelationId" width="250" sortable="true" />
+                <ColumnConfig dataIndex="stepType" headerKey="Step Type" property="stepType" sortProperty="stepType" width="250" sortable="true" />
+                <ColumnConfig dataIndex="bundle_id" headerKey="Bundle Id" property="bundleId" sortProperty="bundleId" width="250" sortable="true" />
+                <ColumnConfig dataIndex="created" headerKey="Created" dateStyle="short" property="created" sortProperty="created" width="150" sortable="true" />
+                <ColumnConfig dataIndex="modified" headerKey="Modified" dateStyle="short" property="modified" sortProperty="modified" width="150" sortable="true" />
+              </List>
+            </value>
+          </entry>
+
+          <entry key="debugNativeIdentityChangeEventGridColumns">
+            <value>
+              <List>
+                <ColumnConfig dataIndex="id" headerKey="Id" property="id" sortProperty="id" sortable="true" width="250"/>
+                <ColumnConfig dataIndex="modified" headerKey="Modified" property="modified" sortProperty="modified" sortable="true" width="250" dateStyle="short"/>
+                <ColumnConfig dataIndex="created" headerKey="Created" property="created" sortProperty="created" sortable="true" width="250" dateStyle="short"/>
+                <ColumnConfig dataIndex="type" headerKey="Type" property="type" sortProperty="type" sortable="true" width="100"/>
+                <ColumnConfig dataIndex="uuid" headerKey="UUID" property="uuid" sortProperty="uuid" sortable="true" width="250"/>
+                <ColumnConfig dataIndex="oldNativeIdentity" headerKey="Old Native Identity" property="oldNativeIdentity" sortProperty="oldNativeIdentity" sortable="true" width="250"/>
+                <ColumnConfig dataIndex="newNativeIdentity" headerKey="New Native Identity" property="newNativeIdentity" sortProperty="uuid" sortable="true" width="250"/>
+                <ColumnConfig dataIndex="status" headerKey="Status" property="status" sortProperty="status" sortable="true" width="100"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="uiRoleEntitlementsColumns">
+            <value>
+              <List>
+                <ColumnConfig headerKey="ui_item_detail_iiq_elevated_access" dataIndex="iiqElevatedAccess" property="iiqElevatedAccess" hidden = "true"/>
+              </List>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </UIConfig>
+  </ImportAction>
+
+  <ImportAction name="merge">
+    <Configuration name="SystemConfiguration">
+      <Attributes>
+        <Map>
+          <!-- Teams Notification config -->
+          <entry key="apiAuthAudience" value=""/>
+          <entry key="apiAuthIssuers" value=""/>
+          <entry key="apiAuthScope" value=""/>
+          <entry key="apiCorrelationVariable" value=""/>
+          <entry key="audienceClaimValidationRequired" value="true"/>
+          <entry key="issuersClaimValidationRequired" value="true"/>
+          <entry key="scopeClaimValidationRequired" value="true"/>
+
+          <!-- New SearchInputDefinition objects for role profile searching -->
+          <entry key='searchInputDefinitions'>
+            <value>
+              <List>
+                <SearchInputDefinition name="role.profileLocality"
+                                       description="srch_input_def_profile_locality"
+                                       headerKey="srch_input_def_profile_locality"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profileLocality"
+                                       propertyType="String"
+                                       filterBuilder="sailpoint.search.BundleProfileFilterBuilder"
+                                       searchType="Role"/>
+                <SearchInputDefinition name="role.profileStatus"
+                                       description="srch_input_def_profile_status"
+                                       headerKey="srch_input_def_profile_status"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profileStatus"
+                                       propertyType="String"
+                                       filterBuilder="sailpoint.search.BundleProfileFilterBuilder"
+                                       searchType="Role"/>
+                <SearchInputDefinition name="role.profileInheritance"
+                                       description="srch_input_def_profile_inheritance"
+                                       headerKey="srch_input_def_profile_inheritance"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profileInheritance"
+                                       propertyType="String"
+                                       filterBuilder="sailpoint.search.BundleProfileFilterBuilder"
+                                       searchType="Role"/>
+                <SearchInputDefinition name="role.profileReqPerm"
+                                       description="srch_input_def_profile_reqperm"
+                                       headerKey="srch_input_def_profile_reqperm"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profileReqPerm"
+                                       propertyType="String"
+                                       filterBuilder="sailpoint.search.BundleProfileFilterBuilder"
+                                       searchType="Role"/>
+                <SearchInputDefinition name="role.profileApp"
+                                       description="srch_input_def_profile_app"
+                                       headerKey="srch_input_def_profile_app"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profiles.application.id"
+                                       propertyType="String"
+                                       filterBuilder="sailpoint.search.BundleProfileFilterBuilder"
+                                       searchType="Role"/>
+                <SearchInputDefinition name="role.profileType"
+                                       description="srch_input_def_profile_type"
+                                       headerKey="srch_input_def_profile_type"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profileType"
+                                       propertyType="String"
+                                       filterBuilder="sailpoint.search.BundleProfileFilterBuilder"
+                                       searchType="Role"/>
+                <SearchInputDefinition name="role.entAttribute"
+                                       description="srch_input_def_profile_ent_attribute"
+                                       headerKey="srch_input_def_profile_ent_attribute"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profileEntAttribute"
+                                       propertyType="String"
+                                       filterBuilder="sailpoint.search.BundleProfileFilterBuilder"
+                                       searchType="Role"/>
+                <SearchInputDefinition name="role.entValue"
+                                       description="srch_input_def_profile_ent_value"
+                                       headerKey="srch_input_def_profile_ent_value"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profileEntValue"
+                                       propertyType="String"
+                                       filterBuilder="sailpoint.search.BundleProfileFilterBuilder"
+                                       searchType="Role"/>
+                <SearchInputDefinition name="role.permTarget"
+                                       description="srch_input_def_profile_perm_target"
+                                       headerKey="srch_input_def_profile_perm_target"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profilePermTarget"
+                                       propertyType="String"
+                                       filterBuilder="sailpoint.search.BundleProfileFilterBuilder"
+                                       searchType="Role"/>
+                <SearchInputDefinition name="role.permRight"
+                                       description="srch_input_def_profile_perm_right"
+                                       headerKey="srch_input_def_profile_perm_right"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profilePermRight"
+                                       propertyType="String"
+                                       filterBuilder="sailpoint.search.BundleProfileFilterBuilder"
+                                       searchType="Role"/>
+                <SearchInputDefinition name="advancedRole.profileStatus"
+                                       description="srch_input_def_profile_status"
+                                       headerKey="srch_input_def_profile_status"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profileStatus"
+                                       propertyType="String"
+                                       allowedLogicalOps="EQ,NE"
+                                       filterBuilder="sailpoint.search.BundleProfileAdvancedFilterBuilder"
+                                       searchType="AdvancedRole"/>
+                <SearchInputDefinition name="advancedRole.profileInheritance"
+                                       description="srch_input_def_profile_inheritance"
+                                       headerKey="srch_input_def_profile_inheritance"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profileInheritance"
+                                       propertyType="String"
+                                       allowedLogicalOps="EQ,NE"
+                                       filterBuilder="sailpoint.search.BundleProfileAdvancedFilterBuilder"
+                                       searchType="AdvancedRole"/>
+                <SearchInputDefinition name="advancedRole.profileReqPerm"
+                                       description="srch_input_def_profile_reqperm"
+                                       headerKey="srch_input_def_profile_reqperm"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profileReqPerm"
+                                       propertyType="String"
+                                       allowedLogicalOps="EQ,NE"
+                                       filterBuilder="sailpoint.search.BundleProfileAdvancedFilterBuilder"
+                                       searchType="AdvancedRole"/>
+                <SearchInputDefinition name="advancedRole.profileApp"
+                                       description="srch_input_def_profile_app"
+                                       headerKey="srch_input_def_profile_app"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       nullPropertyName="profiles.application.name"
+                                       nullPropertyType="String"
+                                       propertyName="profiles.application.name"
+                                       propertyType="Collection"
+                                       filterBuilder="sailpoint.search.BundleProfileAdvancedFilterBuilder"
+                                       searchType="AdvancedRole"/>
+                <SearchInputDefinition name="advancedRole.profileEntAttribute"
+                                       description="srch_input_def_profile_entitlement_attribute"
+                                       headerKey="srch_input_def_profile_entitlement_attribute"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profileEntAttribute"
+                                       propertyType="String"
+                                       filterBuilder="sailpoint.search.BundleProfileAdvancedFilterBuilder"
+                                       searchType="AdvancedRole"/>
+                <SearchInputDefinition name="advancedRole.profileEntValue"
+                                       description="srch_input_def_profile_entitlement_value"
+                                       headerKey="srch_input_def_profile_entitlement_value"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profileEntValue"
+                                       propertyType="String"
+                                       filterBuilder="sailpoint.search.BundleProfileAdvancedFilterBuilder"
+                                       searchType="AdvancedRole"/>
+                <SearchInputDefinition description="srch_input_def_profile_permission_target"
+                                       headerKey="srch_input_def_profile_permission_target"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       name="advancedRole.profilePermTarget"
+                                       propertyName="profilePermTarget"
+                                       propertyType="String"
+                                       filterBuilder="sailpoint.search.BundleProfileAdvancedFilterBuilder"
+                                       searchType="AdvancedRole"/>
+                <SearchInputDefinition name="advancedRole.profilePermRight"
+                                       description="srch_input_def_profile_permission_right"
+                                       headerKey="srch_input_def_profile_permission_right"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       propertyName="profilePermRight"
+                                       propertyType="String"
+                                       filterBuilder="sailpoint.search.BundleProfileAdvancedFilterBuilder"
+                                       searchType="AdvancedRole"/>
+                <!-- New SearchInputDefinition objects for Account Group searching -->
+                <SearchInputDefinition description="srch_input_def_link_identity_name"
+                                       headerKey="srch_input_def_link_identity_name"
+                                       ignoreCase="true"
+                                       inputType="Equal"
+                                       name="link.identity_name"
+                                       propertyName="identity.name"
+                                       propertyType="String"
+                                       searchType="Link"/>
+                <SearchInputDefinition description="role_is_iiq_elevated_access_label"
+                                       headerKey="role_is_iiq_elevated_access_label"
+                                       inputType="Equal" name="role.iiqElevatedAccess" propertyName="iiqElevatedAccess"
+                                       propertyType="Boolean" searchType="Role"/>
+                <SearchInputDefinition description="role_is_iiq_elevated_access_label"
+                                       headerKey="role_is_iiq_elevated_access_label" inputType="Equal"
+                                       name="advancedRole.iiqElevatedAccess" propertyName="iiqElevatedAccess"
+                                       propertyType="Boolean" searchType="AdvancedRole"/>
+                <SearchInputDefinition description="role_is_iiq_elevated_access_label" headerKey="type"
+                                       ignoreCase="true"
+                                       inputType="Equal" name="accountGroup.iiqElevatedAccess"
+                                       propertyName="iiqElevatedAccess" propertyType="Boolean"
+                                       searchType="AccountGroup"/>
+                <SearchInputDefinition description="role_is_iiq_elevated_access_label"
+                                       headerKey="role_is_iiq_elevated_access_label" inputType="Equal"
+                                       name="advancedAccountGroup.iiqElevatedAccess" propertyName="iiqElevatedAccess"
+                                       propertyType="Boolean" searchType="AdvancedAccountGroup"/>
+              </List>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </Configuration>
+  </ImportAction>
+
+  <!--***********************************************************
+
+BundleProfileRelationService Configuration
+
+*************************************************************-->
+
+
+  <ServiceDefinition name="BundleProfileRelation" hosts='global' interval='60'>
+    <Description>
+      Service definition for the BundleProfileRelationService.
+    </Description>
+    <Attributes>
+      <Map>
+        <entry key="lockTimeout">
+          <value>
+            <Integer>300</Integer>
+          </value>
+        </entry>
+        <entry key="cycleSeconds">
+          <value>
+            <Integer>10</Integer>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+  </ServiceDefinition>
+
+  <ImportAction name="merge">
+    <Configuration name="WebResource">
+      <Attributes>
+        <Map>
+          <entry key="webResources">
+            <value>
+              <List>
+                <WebResource rights="*" url="define/groups/accountGroupAssocRolesDataSource.*"/>
+              </List>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </Configuration>
+  </ImportAction>
+
+  <ImportAction name="merge">
+    <Configuration name="SystemConfiguration">
+      <Attributes>
+        <Map>
+          <!-- Elevated Access options. -->
+          <entry key="displayIiqElevatedAccessInAccessRequest" value="true" />
+        </Map>
+      </Attributes>
+    </Configuration>
+  </ImportAction>
+
+  <!-- Add iiqElevatedAccess -->
+  <ImportAction name='merge'>
+    <UIConfig name='UIConfig'>
+      <Attributes>
+        <Map>
+          <entry key="entitlementCatalogTableColumns">
+            <value>
+              <List>
+                <ColumnConfig headerKey="display_name" dataIndex="displayableName" property="displayableName" sortProperty="displayableName" sortable="true" hideable="true" renderer="SailPoint.grid.Util.renderIiqElevatedAccess"/>
+                <ColumnConfig dataIndex="iiqElevatedAccess" fieldOnly="true" property="iiqElevatedAccess"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="uiIdentityEntitlementIndirectGridColumns">
+            <value>
+              <List>
+                <ColumnConfig headerKey="value" property="targetName" sortProperty="targetName" sortable="true" hideable="true" renderer="spIdentityAccessEntitlementColumn"/>
+                <ColumnConfig dataIndex="iiqElevatedAccess" fieldOnly="true"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="identityEntitlementIndirectGridColumns">
+            <value>
+              <List>
+                <ColumnConfig headerKey="value" property="targetName" sortProperty="targetName" sortable="true" hideable="true" renderer="SailPoint.grid.Util.renderIiqElevatedAccess"/>
+                <ColumnConfig dataIndex="iiqElevatedAccess" fieldOnly="true"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="uiCertificationExportColumns">
+            <value>
+              <List>
+                <ColumnConfig headerKey="cert_item_tbl_header_iiq_elevated_access" dataIndex="iiqElevatedAccess" property="iiqElevatedAccess" fieldOnly="true"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="uiCertificationExportWithRecommendationColumns">
+            <value>
+              <List>
+                <ColumnConfig headerKey="cert_item_tbl_header_iiq_elevated_access" dataIndex="iiqElevatedAccess" property="iiqElevatedAccess" fieldOnly="true"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="uiTargetedCertificationItemWorksheetColumns">
+            <value>
+              <List>
+                <ColumnConfig dataIndex="iiqElevatedAccess" property="iiqElevatedAccess" fieldOnly="true"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="uiCertificationItemWorksheetColumns">
+            <value>
+              <List>
+                <ColumnConfig dataIndex="iiqElevatedAccess" property="iiqElevatedAccess" fieldOnly="true"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="uiTargetedCertificationItemDetailViewColumns">
+            <value>
+              <List>
+                <ColumnConfig dataIndex="iiqElevatedAccess" property="iiqElevatedAccess" fieldOnly="true"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="uiCertificationItemDetailViewColumns">
+            <value>
+              <List>
+                <ColumnConfig dataIndex="iiqElevatedAccess" property="iiqElevatedAccess" fieldOnly="true"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="uiBusinessRoleMembershipCertificationItemWorksheetColumns">
+            <value>
+              <List>
+                <ColumnConfig headerKey="cert_item_tbl_header_bundle" dataIndex="displayName" property="targetDisplayName" sortProperty="targetDisplayName" sortable="true" renderer="spCertificationDisplayNameColumn"/>
+                <ColumnConfig dataIndex="iiqElevatedAccess" property="iiqElevatedAccess" fieldOnly="true"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="uiBusinessRoleMembershipCertificationItemDetailViewColumns">
+            <value>
+              <List>
+                <ColumnConfig headerKey="cert_item_tbl_header_bundle" dataIndex="displayName" property="targetDisplayName" sortProperty="targetDisplayName" sortable="true"  renderer="spCertificationDisplayNameColumn"/>
+                <ColumnConfig dataIndex="iiqElevatedAccess" property="iiqElevatedAccess" fieldOnly="true"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="certificationDetailEntitlementsColumns">
+            <value>
+              <List>
+                <ColumnConfig dataIndex="iiqElevatedAccess" fieldOnly="true" property="iiqElevatedAccess"/>
+              </List>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </UIConfig>
+  </ImportAction>
+
+  <ImportAction name='merge'>
+    <Configuration name='SystemConfiguration'>
+      <Attributes>
+        <Map>
+          <!-- The email service endpoint for sending email notification -->
+          <entry key="emailServiceEndpoint" value="https://graph.microsoft.com/v1.0/users/email_address/sendMail" />
+
+          <!-- The token endpoint for email notifier to use -->
+          <entry key="emailTokenEndpoint" value="https://login.microsoftonline.com/tenant_id/oauth2/v2.0/token" />
+
+          <!-- The refresh token endpoint for email notifier to use -->
+          <entry key="emailRefreshTokenEndpoint" value="https://login.microsoftonline.com/tenant_id/oauth2/v2.0/token" />
+
+          <!-- The scope email notifier to use -->
+          <entry key="emailScope" value="https://graph.microsoft.com/.default" />
+        </Map>
+      </Attributes>
+    </Configuration>
+  </ImportAction>
+  <!--
+    Update full text search to support new role profile fields
+  -->
+  <ImportAction name="merge">
+    <FullTextIndex name="BundleManagedAttribute">
+      <Attributes>
+        <Map>
+          <entry key="fields">
+            <value>
+              <List>
+                <!-- Role-specific profile fields -->
+                <FullTextField name="profile.sourceApplication.name" indexed="true" analyzed="true"/>
+                <FullTextField name="profile.sourceApplication.id" indexed="true" analyzed="true"/>
+                <FullTextField name="profile.value" indexed="true" analyzed="true"  />
+                <FullTextField name="profile.displayValue" indexed="true" analyzed="true"  />
+                <FullTextField name="profile.attribute" indexed="true" analyzed="true"/>
+                <FullTextField name="profile.type" indexed="true" analyzed="true"/>
+                <FullTextField name="iiqElevatedAccess" indexed="true"/>
+              </List>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </FullTextIndex>
+  </ImportAction>
+  <RequestDefinition executor="sailpoint.request.NativeIdentityChangePropagationRequestExecutor"
+                     type="NativeIdentityChangePropagation"
+                     name="Native Identity Change Propagation Request"
+                     retryMax="10" retryInterval="60" >
+    <Description>
+      Request definition for propagating native identity change events.
+    </Description>
+    <Attributes>
+      <Map>
+        <entry key='maxThreads' value="5"/>
+        <entry key="accountPropagators" >
+          <value>
+            <List>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeFormPropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeCorrelationConfigPropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeApplicationPropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeDynamicScopePropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangePasswordPolicyHolderPropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeGroupDefinitionPropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeIdentityTriggerPropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeRolePropagatorCorrelationModel"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeRulePropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangePolicyPropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.AccountNativeIdentityChangeIdentityPropagator"/>
+            </List>
+          </value>
+        </entry>
+        <entry key="groupPropagators" >
+          <value>
+            <List>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeFormPropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeCorrelationConfigPropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeApplicationPropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeDynamicScopePropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangePasswordPolicyHolderPropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeGroupDefinitionPropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeIdentityTriggerPropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeRolePropagatorCorrelationModel"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangeRulePropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.NativeIdentityChangePolicyPropagator"/>
+              <Propagator className="sailpoint.api.nativeidentitychange.GroupNativeIdentityChangeIdentityPropagator"/>
+            </List>
+          </value>
+        </entry>
+        <entry key="enablePartitioning" value="false"/>
+        <!-- When enable partitioning, events may not be executed in chronological order.
+        <entry key="accountNativeIdentityChangePropagationPartitionSize" value="1000" />
+        <entry key="groupNativeIdentityChangePropagationPartitionSize" value="100" />
+        -->
+      </Map>
+    </Attributes>
+  </RequestDefinition>
+
+  <ImportAction name="merge">
+    <AuditConfig name='AuditConfig'>
+      <AuditActions>
+        <!-- Notification events -->
+        <AuditAction name="ChatNotificationSuccess" displayName="audit_action_chat_notification_success"/>
+        <AuditAction name="ChatNotificationFailure" displayName="audit_action_chat_notification_failure"/>
+      </AuditActions>
+    </AuditConfig>
+  </ImportAction>
+
+  <!-- Adding TargetAssociation Deny Permission -->
+  <ImportAction name='merge'>
+    <UIConfig name='UIConfig'>
+      <Attributes>
+        <Map>
+          <entry key="accountGroupAccessTableColumns">
+            <value>
+              <List>
+                <ColumnConfig headerKey="source" property="applicationName" sortProperty="applicationName" sortable="true" hideable="true"/>
+                <ColumnConfig headerKey="type" property="targetType" sortProperty="targetType" sortable="true" hideable="true"/>
+                <ColumnConfig headerKey="value" property="targetName" sortProperty="targetName" sortable="true" hideable="true"/>
+                <ColumnConfig headerKey="rights" property="rights" sortable="false" hideable="true" renderer="renderRight"/>
+                <ColumnConfig headerKey="path" property="hierarchy" hideable="true"/>
+              </List>
+            </value>
+          </entry>
+          <entry key="uiAccountGroupAccessTableColumns">
+            <value>
+              <List>
+                <ColumnConfig headerKey="source" dataIndex="applicationName" property="applicationName" sortProperty="applicationName" sortable="true" hideable="true"/>
+                <ColumnConfig headerKey="type" dataIndex="targetType" property="targetType" sortProperty="targetType" sortable="true" hideable="true"/>
+                <ColumnConfig headerKey="value" dataIndex="targetName" property="targetName" sortProperty="targetName" sortable="true" hideable="true"/>
+                <ColumnConfig headerKey="rights" dataIndex="rights" property="rights" sortable="false" hideable="true" renderer="spRight"/>
+                <ColumnConfig headerKey="path" dataIndex="hierarchy" property="hierarchy" hideable="true"/>
+              </List>
+            </value>
+          </entry>
+        </Map>
+      </Attributes>
+    </UIConfig>
+  </ImportAction>
+
+</sailpoint>
