@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE sailpoint PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+
+<!-- (c) Copyright 2020 SailPoint Technologies, Inc., All Rights Reserved. -->
+
+<!--
+  This is used by 'iiq upgrade' to drive upgrading the schema and data between revisions.
+  There are two files that define the upgrade: upgrade.xml and upgradeObjects.xml.
+  upgrade.xml file is processed in a special way before Hibernate is started so that changes can be made at the JDBC
+  level. This file should only contain <ImportAction> elements that use the "execute" command to call upgrader classes.
+  *DO NOT PUT STATIC XML OBJECTS IN UPGRADE.XML*
+  upgradeObjects.xml is included by upgrade.xml; it will be imported after Hibernate is started. Any changes to objects
+  that can be represented as static XML or as ImportActions with the "merge" command must go in these files to ensure
+  that they are parsed after Hibernate has been started so that references can be resolved. Like upgrade.xml, each
+  action should have a revision attribute specified, which will be checked while upgrading to make sure that upgrades
+  aren't run multiple times. First the upgraders that are marked as pre-Hibernate are run, then Hibernate is started,
+  then the ones marked as post-Hibernate are run. After all the upgraders are run and Hibernate is started, the
+  upgradeObjects.xml file is imported. In some special cases we have upgraders that run after the upgradeObjects.xml
+  import.
+-->
+<sailpoint>
+  <!-- DO NOT REMOVE - THIS SHOULD BE IMPORTED FOR EVERY RELEASE. -->
+  <ImportAction name='include' value='WEB-INF/config/upgradeObjects.xml' />
+
+  <!-- Need to run this in order to do initial population of the
+   BundleProfileRelations in the database.  It's also possible to
+   run this later via the Refresh Role-Entitlement Associations task.
+   This upgrader sets a bundleProfileRelationsUpgraded flag
+   in system config to check whether it has already been run.-->
+  <ImportAction name='execute' value='sailpoint.server.upgrade.BundleProfileRelationUpgrader'>
+    <TaskDefinition name='BundleProfileRelationUpgrader'
+                    executor="sailpoint.task.RoleEntitlementAssociationsExecutor">
+      <Attributes>
+        <Map>
+          <entry key="AssociationsThreads" value="5" />
+        </Map>
+      </Attributes>
+      <Description>TaskDefinition for the upgrader that refreshes Role-Entitlement Associations.</Description>
+    </TaskDefinition>
+  </ImportAction>
+
+  <!-- Run this upgrader to add new property teamsBotSecret to encrypted list for Azure AD apps-->
+  <ImportAction name='execute' value='sailpoint.server.upgrade.AzureAppEncryptedPropUpgrader'/>
+
+  <!-- Run this upgrader to add AuditAction ActionNativeIdentityChangeEventsPruned to AuditConfig-->
+  <ImportAction name='execute' value='sailpoint.server.upgrade.AuditConfigUpgrader'/>
+
+</sailpoint>
